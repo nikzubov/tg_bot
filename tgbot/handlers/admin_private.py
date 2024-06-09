@@ -1,7 +1,6 @@
 from aiogram import F, Router, types
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import State, StatesGroup
 from aiogram.utils.formatting import Bold, Text, as_list
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -9,6 +8,7 @@ from database.orm import orm_del_anecdote, orm_get_all_anecdote
 from filters.chat_types import ChatTypeFilter, IsAdmin
 from kb.inline import get_inline_kb
 from kb.reply import get_kb
+from .states import DeleteAnec
 
 admin_router = Router()
 admin_router.message.filter(ChatTypeFilter(('private')), IsAdmin())
@@ -20,10 +20,6 @@ ADMIN_KB = get_kb(
     placeholder='Выберите действие',
     sizes=(1,),
 )
-
-
-class DeleteAnekdote(StatesGroup):
-    id = State()
 
 
 @admin_router.message(F.text == 'Посмотреть все анекдоты')
@@ -62,10 +58,10 @@ async def next_page(callback: types.CallbackQuery, session: AsyncSession):
 @admin_router.message(F.text == 'Удалить анекдот')
 async def delete_anecdote(message: types.Message, state: FSMContext):
     await message.answer('Введите id анекдота')
-    await state.set_state(DeleteAnekdote.id)
+    await state.set_state(DeleteAnec.id)
 
 
-@admin_router.message(DeleteAnekdote.id, F.text)
+@admin_router.message(DeleteAnec.id, F.text)
 async def set_id(message: types.Message, state: FSMContext, session: AsyncSession):
     await state.update_data(id=message.text)
     data = await state.get_data()

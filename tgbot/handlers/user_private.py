@@ -7,7 +7,6 @@ from aiogram.enums import ParseMode
 from aiogram.filters import Command, CommandStart, StateFilter
 from aiogram.filters.logic import or_f
 from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import State, StatesGroup
 from aiogram.utils.formatting import Bold, Text, as_list
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,10 +14,11 @@ from bot_instance import BOT
 from database.orm import (orm_add_anek, orm_get_access, orm_get_anek,
                           orm_get_welcome, orm_set_rate)
 from filters.chat_types import ChatTypeFilter
-from gpt.yandex import get_query
+from extensions.yandex import get_response
 from kb.inline import get_inline_kb
 from kb.reply import get_kb
-from parcer import anecdote_from_parce
+from extensions.parcer import get_anec_list
+from .states import AddAnec, GetQuery
 
 user_private_router = Router()
 user_private_router.message.filter(ChatTypeFilter(('private')))
@@ -29,24 +29,6 @@ START_KB = get_kb(
         'joke_bot',
         placeholder='Что вас интересует?'
     )
-
-
-class AddAnek(StatesGroup):
-    category = State()
-    text = State()
-
-    texts = {
-        'AddAnek:category': 'Введите категорию',
-        'AddAnek:text': 'Введите текст'
-    }
-
-
-class GetQuery(StatesGroup):
-    query = State()
-
-    texts = {
-        'GetQuery:query': 'Введите запрос',
-    }
 
 
 @user_private_router.message(or_f(CommandStart(), (F.text == '↩️ Назад')))
@@ -102,7 +84,7 @@ async def gpt_query(message: types.Message, session: AsyncSession):
     )
     if user_access:
         response_message = await message.answer('Печатает...')
-        response = await get_query(message.text)
+        response = await get_response(message.text)
         pattern = (
             r'\[', r'\]', r'\(', r'\)', r'\~', r'\>', r'\#', r'\+',
             r'\-', r'\=', r'\|', r'\{', r'\}', r'\.', r'\!'
@@ -134,7 +116,8 @@ async def menu(message: types.Message):
 
 @user_private_router.message(F.text == 'Хочу анекдот😁')
 async def anecdote(message: types.Message):
-    await message.answer(choice(anecdote_from_parce))
+    anec_list = await get_anec_list()
+    await message.answer(choice(anec_list))
 
 
 @user_private_router.message(F.text == 'Анекдоты подписчиков🤣')
@@ -182,20 +165,20 @@ async def add_anek(message: types.Message, state: FSMContext, session: AsyncSess
         hello = f'Снова здравствуйте, *{message.from_user.username}*\!'
     await message.answer(hello, parse_mode=ParseMode.MARKDOWN_V2)
     await message.answer("Введите категорию")
-    await state.set_state(AddAnek.category)
+    await state.set_state(AddAnec.category)
 
 
-@user_private_router.message(AddAnek.category, F.text)
+@user_private_router.message(AddAnec.category, F.text)
 async def add_category(message: types.Message, state: FSMContext):
     await state.update_data(username=message.from_user.username, category=message.text)
     await message.answer("Введите текст")
-    await state.set_state(AddAnek.text)
+    await state.set_state(AddAnec.text)
 
 
-@user_private_router.message(AddAnek.text, F.text)
+@user_private_router.message(AddAnec.text, F.text)
 async def add_text(message: types.Message, state: FSMContext, session: AsyncSession):
     await state.update_data(text=message.text)
     await message.answer("Успешно")
     data = await state.get_data()
-    await orm_add_anek(session=session, data=data, message=message)
+    await orm_add_anek(session=session, data=data)
     await state.clear()

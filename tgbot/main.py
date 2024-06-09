@@ -11,6 +11,7 @@ from handlers.admin_private import admin_router
 from handlers.user_group import user_group_router
 from handlers.user_private import user_private_router
 from middlewares.db import DataBaseSession
+from extensions.parcer import build_anec_list
 
 logging.basicConfig(
     level=logging.INFO,
@@ -25,9 +26,9 @@ dp = Dispatcher(fsm_strategy=FSMStrategy.GLOBAL_USER)
 
 dp.include_routers(user_group_router, admin_router, user_private_router)
 
-
 async def on_startup():
     await create_db()
+    await build_anec_list()
 
 
 async def main():

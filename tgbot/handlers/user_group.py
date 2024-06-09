@@ -1,11 +1,6 @@
-import logging
-from random import choice
-
-from aiogram import Bot, F, Router, types
+from aiogram import Router, types
 from aiogram.filters import Command
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.orm import get_users
 from filters.chat_types import ChatTypeFilter
 
 user_group_router = Router()

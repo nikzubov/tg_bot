@@ -1,7 +1,6 @@
-import logging
 from random import choice
+from typing import List,Tuple
 
-from aiogram import types
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -10,7 +9,7 @@ from .models import Anecdote, Category, Rate, Users
 
 #################################################--orm private--###########################################################
 
-async def orm_get_welcome(session: AsyncSession, username: str):
+async def orm_get_welcome(session: AsyncSession, username: str) -> bool:
     user = await session.execute(
         select(Users)
         .where(Users.username == username)
@@ -25,7 +24,7 @@ async def orm_get_welcome(session: AsyncSession, username: str):
     
 
 
-async def orm_get_access(session: AsyncSession, data: str):
+async def orm_get_access(session: AsyncSession, data: str) -> bool:
     user_limit_query = await session.execute(
         select(Users.gpt_limit)
         .where(Users.username == data)
@@ -44,7 +43,10 @@ async def orm_get_access(session: AsyncSession, data: str):
 
 
 
-async def orm_add_anek(session: AsyncSession, data: dict, message: types.Message):
+async def orm_add_anek(
+    session: AsyncSession,
+    data: dict
+) -> None:
     """Функция проверяет есть ли в базе пользователь и категория, в случае отсутствия добавляет"""
 
     category = await session.execute(
@@ -57,7 +59,7 @@ async def orm_add_anek(session: AsyncSession, data: dict, message: types.Message
 
     user = await session.execute(
         select(Users)
-        .where(Users.username == data['username q'])
+        .where(Users.username == data['username'])
     )
     category = await session.execute(
         select(Category)
@@ -76,7 +78,9 @@ async def orm_add_anek(session: AsyncSession, data: dict, message: types.Message
     await session.commit()
 
 
-async def orm_get_anek(session: AsyncSession):
+async def orm_get_anek(
+    session: AsyncSession
+) -> Tuple[Anecdote, int]:
     query_select_all = await session.execute(
         select(Anecdote.id)
     )
@@ -104,7 +108,12 @@ async def orm_get_anek(session: AsyncSession):
     return anek, rate
 
 
-async def orm_set_rate(session: AsyncSession, anecdote_id: int, rate: int, user: str):
+async def orm_set_rate(
+    session: AsyncSession,
+    anecdote_id: int,
+    rate: int,
+    user: str
+) -> None:
 
     query_user = await session.execute(
         select(Users)
@@ -147,7 +156,10 @@ async def orm_set_rate(session: AsyncSession, anecdote_id: int, rate: int, user:
 
 ################################################--orm private admin--#####################################################
 
-async def orm_get_all_anecdote(session: AsyncSession, offset: int):
+async def orm_get_all_anecdote(
+    session: AsyncSession,
+    offset: int
+) -> List[Anecdote]:
     query_list = await session.execute(
         select(Anecdote)
         .offset(offset=offset)
@@ -156,19 +168,17 @@ async def orm_get_all_anecdote(session: AsyncSession, offset: int):
     return query_list.scalars().all()
 
 
-async def orm_del_anecdote(session: AsyncSession, data: int):
+async def orm_del_anecdote(
+    session: AsyncSession,
+    data: int
+) -> int:
     deletion = await session.execute(
         delete(Anecdote)
         .where(Anecdote.id == data)
     )
     await session.commit()
+
     return deletion.rowcount
 
 
 ########################################################--orm group--###########################################################
-
-async def get_users(session: AsyncSession):
-    user_query = await session.execute(
-        select(Users.username)
-    )
-    return user_query.scalars().all()
