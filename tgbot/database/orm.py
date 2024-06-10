@@ -81,13 +81,15 @@ async def orm_add_anek(
 
 async def orm_get_anek(
     session: AsyncSession
-) -> Tuple[Anecdote, int]:
+) -> Tuple[Anecdote, int] | None:
     query_select_all = await session.execute(
         select(Anecdote.id)
     )
     all_id = query_select_all.scalars().all()
-    rand_id = choice(all_id)
-
+    if all_id:
+        rand_id = choice(all_id)
+    else:
+        return None
     query = await session.execute(
         select(Anecdote)
         .where(Anecdote.id == rand_id)

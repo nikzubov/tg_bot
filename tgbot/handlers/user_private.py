@@ -135,25 +135,29 @@ async def anecdote(message: types.Message):
 
 @user_private_router.message(F.text == 'Анекдоты подписчиков🤣')
 async def anecdote_from_users(message: types.Message, session: AsyncSession):
-    anecdote, rate = await orm_get_anek(session)
-    text = ('🐶Рейтинг:\n'
-        f'{str(rate)}\n\n'
-        '🐶Автор:\n'
-        f'@{str(anecdote.users.username)}\n\n'
-        '🐶 Категория\n'
-        f'{anecdote.category.name}\n\n'
-        '🐶Текст:\n'
-        f'{anecdote.text}'
-    )
-    await message.answer(
-        text,
-        parse_mode=ParseMode.MARKDOWN,
-        reply_markup=get_inline_kb(
-            {'👍': f'rate_1_{anecdote.id}_{message.from_user.username}',
-            '👎': f'rate_-1_{anecdote.id}_{message.from_user.username}'},
-            sizes=(2,)
+    result = await orm_get_anek(session)
+    if result:
+        anecdote, rate = result
+        text = ('🐶Рейтинг:\n'
+            f'{str(rate)}\n\n'
+            '🐶Автор:\n'
+            f'@{str(anecdote.users.username)}\n\n'
+            '🐶 Категория\n'
+            f'{anecdote.category.name}\n\n'
+            '🐶Текст:\n'
+            f'{anecdote.text}'
         )
-    )
+        await message.answer(
+            text,
+            parse_mode=ParseMode.MARKDOWN,
+            reply_markup=get_inline_kb(
+                {'👍': f'rate_1_{anecdote.id}_{message.from_user.username}',
+                '👎': f'rate_-1_{anecdote.id}_{message.from_user.username}'},
+                sizes=(2,)
+            )
+        )
+    else:
+        await message.answer('Здесь пока ничего нет.😞')
 
 
 @user_private_router.callback_query(F.data.startswith('rate_'))
