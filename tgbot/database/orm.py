@@ -7,6 +7,8 @@ from sqlalchemy.orm import selectinload
 
 from .models import Anecdote, Category, Rate, Users
 
+CURRENT_LIMITLESS = ('anakinnikita', 'bogdaliz', 'denisiiss', 'vovans23')
+
 #################################################--orm private--###########################################################
 
 async def orm_get_welcome(session: AsyncSession, username: str) -> bool:
@@ -30,7 +32,7 @@ async def orm_get_access(session: AsyncSession, data: str) -> bool:
         .where(Users.username == data)
     )
     user_limit = user_limit_query.scalar_one()
-    if user_limit < 2 or data == 'anakinnikita':
+    if user_limit < 2 or data in CURRENT_LIMITLESS:
         await session.execute(
             update(Users)
             .where(Users.username == data)
@@ -40,7 +42,6 @@ async def orm_get_access(session: AsyncSession, data: str) -> bool:
         return True
     else:
         return False
-
 
 
 async def orm_add_anek(
