@@ -7,7 +7,6 @@ from aiogram.enums import ParseMode
 from aiogram.filters import Command, CommandStart, StateFilter
 from aiogram.filters.logic import or_f
 from aiogram.fsm.context import FSMContext
-from aiogram.utils.formatting import Bold, Text, as_list
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot_instance import BOT
@@ -37,7 +36,12 @@ async def start(message: types.Message):
 
 
 @user_private_router.message(or_f(Command('gpt'), (F.text == 'gpt')))
-async def gpt(message: types.Message, state: FSMContext, session: AsyncSession):
+async def gpt(
+    message: types.Message,
+    state: FSMContext,
+    session: AsyncSession
+):
+    # Функциия проверяет есть ли пользователь в базе и запускает FSM
     welcome_message = await orm_get_welcome(
         session=session,
         username=message.from_user.username
@@ -57,7 +61,7 @@ async def gpt(message: types.Message, state: FSMContext, session: AsyncSession):
 
 
 @user_private_router.message(GetQuery.query, F.text == 'Информация')
-async def gpt_quit(message: types.Message, state: FSMContext):
+async def gpt_quit(message: types.Message):
     text = ('🐶Для генерации текста используется языковая модель YandexGPT\.\n\n'
         '🐶Каждому пользователю предоставляется по 2 ознакомительных запроса\n\n'
         '🐶По вопросам сотрудничества обращаться к @anakinnikita')
@@ -78,19 +82,25 @@ async def gpt_quit(message: types.Message, state: FSMContext):
 @user_private_router.message(GetQuery.query, F.text)
 async def gpt_query(message: types.Message, session: AsyncSession):
     logging.info(f'Text from query: {message.text}')
+    # Проверка, закончились ли у пользователя пробные запросы
     user_access = await orm_get_access(
         session=session,
         data=message.from_user.username
     )
     if user_access:
         response_message = await message.answer('Печатает...')
+        # Запрос к gpt
         response = await get_response(message.text)
         pattern = (
-            r'\[', r'\]', r'\(', r'\)', r'\~', r'\>', r'\#', r'\+',
-            r'\-', r'\=', r'\|', r'\{', r'\}', r'\.', r'\!'
+            r'\[', r'\]', r'_'
         )
+        '''
+        Для корректного использования markdown
+        требуется экранирование некоторых символов из ответа YandexGPT
+        '''
         for char in pattern:
             response = re.sub(char, '\\' + char, response)
+        response = re.sub(r'\*\*', '*', response)
         logging.info(f'Text from answer: {response}...')
         await BOT.delete_message(
             message.chat.id,
@@ -98,14 +108,17 @@ async def gpt_query(message: types.Message, session: AsyncSession):
         )
         await message.answer(
             response,
-            parse_mode=ParseMode.MARKDOWN_V2,
+            parse_mode=ParseMode.MARKDOWN,
             reply_markup=get_kb('Выйти из gpt', 'Информация')
         )
     else:
         await message.answer('У вас закончились пробные запросы, свяжитесь с @anakinnikita.')
 
 
-@user_private_router.message(or_f(Command('joke_bot'), (F.text.lower() == 'joke_bot')))
+@user_private_router.message(or_f(
+    Command('joke_bot'),
+    (F.text.lower() == 'joke_bot')
+))
 async def menu(message: types.Message):
     await message.answer('Это меню👇', reply_markup=get_kb(
         'Хочу анекдот😁', 'Добавить анекдот😃👍', 'Анекдоты подписчиков🤣', '↩️ Назад',
@@ -123,18 +136,18 @@ async def anecdote(message: types.Message):
 @user_private_router.message(F.text == 'Анекдоты подписчиков🤣')
 async def anecdote_from_users(message: types.Message, session: AsyncSession):
     anecdote, rate = await orm_get_anek(session)
-    text = as_list(
-        Bold('🐶Рейтинг:'),
-        Text(str(rate)),
-        Bold('🐶Автор:'),
-        Text('@' + str(anecdote.users.username)),
-        Bold('🐶 Категория'),
-        Text(anecdote.category.name),
-        Bold('🐶Текст:'),
-        Text(anecdote.text),
+    text = ('🐶Рейтинг:\n'
+        f'{str(rate)}\n\n'
+        '🐶Автор:\n'
+        f'@{str(anecdote.users.username)}\n\n'
+        '🐶 Категория\n'
+        f'{anecdote.category.name}\n\n'
+        '🐶Текст:\n'
+        f'{anecdote.text}'
     )
     await message.answer(
-        text.as_html(),
+        text,
+        parse_mode=ParseMode.MARKDOWN,
         reply_markup=get_inline_kb(
             {'👍': f'rate_1_{anecdote.id}_{message.from_user.username}',
             '👎': f'rate_-1_{anecdote.id}_{message.from_user.username}'},
@@ -152,8 +165,12 @@ async def rate_anecdote(callback: types.CallbackQuery, session: AsyncSession):
     await callback.message.answer('Ваша оценка учтена!')
 
 
-@user_private_router.message(StateFilter(None), F.text == 'Добавить анекдот😃👍')
+@user_private_router.message(
+    StateFilter(None),
+    F.text == 'Добавить анекдот😃👍'
+)
 async def add_anek(message: types.Message, state: FSMContext, session: AsyncSession):
+    # Функциия проверяет есть ли пользователь в базе и запускает FSM
     welcome_message = await orm_get_welcome(
         session=session,
         username=message.from_user.username
