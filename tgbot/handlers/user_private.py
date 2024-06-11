@@ -32,7 +32,14 @@ START_KB = get_kb(
 
 @user_private_router.message(or_f(CommandStart(), (F.text == '↩️ Назад')))
 async def start(message: types.Message):
-    await message.answer('Начнём:', reply_markup=START_KB)
+    if message.text == '↩️ Назад':
+        hello_msg = 'Выбери, чем хочешь заняться🐶'
+    else:
+        hello_msg = (f'Привет, *{message.from_user.full_name}*!\n\n'
+                    'Меня зовут *Чопа*, я генератор шуток и мыслей. '
+                    'Выбери, чем хочешь заняться🐶')
+
+    await message.answer(hello_msg, parse_mode=ParseMode.MARKDOWN, reply_markup=START_KB)
 
 
 @user_private_router.message(or_f(Command('gpt'), (F.text == 'gpt')))
@@ -47,12 +54,12 @@ async def gpt(
         username=message.from_user.username
     )
     if welcome_message:
-        hello = (f'Добро пожаловать *{message.from_user.first_name}*\!👋\n'
-            'Меня зовут *Чопа*🐶\, я умный пёс\.\n'
-            'Ниже вы можете задать ваш вопрос\.')
+        hello = (f'Добро пожаловать *{message.from_user.first_name}*!👋\n'
+            'Меня зовут *Чопа*🐶, я умный пёс.\n'
+            'Ниже вы можете задать свой вопрос.')
     else:
-        hello = f'Снова здравствуйте, *{message.from_user.username}*\!'
-    await message.answer(hello, parse_mode=ParseMode.MARKDOWN_V2)
+        hello = f'Снова здравствуйте, *{message.from_user.username}*!'
+    await message.answer(hello, parse_mode=ParseMode.MARKDOWN)
     await message.answer(
         'Введите запрос',
         reply_markup=get_kb('Выйти из gpt', 'Информация')
@@ -62,13 +69,13 @@ async def gpt(
 
 @user_private_router.message(GetQuery.query, F.text == 'Информация')
 async def gpt_quit(message: types.Message):
-    text = ('🐶Для генерации текста используется языковая модель YandexGPT\.\n\n'
-        '🐶Каждому пользователю предоставляется по 2 ознакомительных запроса\n\n'
+    text = ('🐶Для генерации текста используется языковая модель *YandexGPT*.\n\n'
+        '🐶Каждому пользователю предоставляется по *2* ознакомительных запроса\n\n'
         '🐶По вопросам сотрудничества обращаться к @anakinnikita')
 
     await message.answer(
         text,
-        parse_mode=ParseMode.MARKDOWN_V2,
+        parse_mode=ParseMode.MARKDOWN,
         reply_markup=get_kb('Выйти из gpt', 'Информация')
     )
 
@@ -133,7 +140,7 @@ async def anecdote(message: types.Message):
     await message.answer(choice(anec_list))
 
 
-@user_private_router.message(F.text == 'Анекдоты подписчиков🤣')
+@user_private_router.message(F.text == 'Анекдоты пользователей🤣')
 async def anecdote_from_users(message: types.Message, session: AsyncSession):
     result = await orm_get_anek(session)
     if result:
