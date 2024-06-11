@@ -32,12 +32,10 @@ START_KB = get_kb(
 
 @user_private_router.message(or_f(CommandStart(), (F.text == '↩️ Назад')))
 async def start(message: types.Message):
-    if message.text == '↩️ Назад':
-        hello_msg = 'Выбери, чем хочешь заняться🐶'
-    else:
+    hello_msg = 'Выбери, чем хочешь заняться🐶'
+    if message.text == '/start':
         hello_msg = (f'Привет, *{message.from_user.full_name}*!\n\n'
-                    'Меня зовут *Чопа*, я генератор шуток и мыслей. '
-                    'Выбери, чем хочешь заняться🐶')
+                    'Меня зовут *Чопа*, я генератор шуток и мыслей. ') + hello_msg
 
     await message.answer(hello_msg, parse_mode=ParseMode.MARKDOWN, reply_markup=START_KB)
 
@@ -98,15 +96,8 @@ async def gpt_query(message: types.Message, session: AsyncSession):
         response_message = await message.answer('Печатает...')
         # Запрос к gpt
         response = await get_response(message.text)
-        pattern = (
-            r'\[', r'\]', r'_'
-        )
-        '''
-        Для корректного использования markdown
-        требуется экранирование некоторых символов из ответа YandexGPT
-        '''
-        for char in pattern:
-            response = re.sub(char, '\\' + char, response)
+        # Так как markdown gpt отличается, требуется замена '**' на '*
+        response = re.sub(r'(?<!\*)\*(?!\*)', '\*', response)
         response = re.sub(r'\*\*', '*', response)
         logging.info(f'Text from answer: {response}...')
         await BOT.delete_message(
