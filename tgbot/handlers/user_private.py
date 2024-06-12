@@ -97,8 +97,8 @@ async def gpt_query(message: types.Message, session: AsyncSession):
         # Запрос к gpt
         response = await get_response(message.text)
         # Так как markdown gpt отличается, требуется замена '**' на '*
-        response = re.sub(r'(?<!\*)\*(?!\*)', '\*', response)
-        response = re.sub(r'\*\*', '\\*', response)
+        response = re.sub(r'(?<!\*)\*(?!\*)', '\\*', response)
+        response = re.sub(r'\*\*', '*', response)
         logging.info(f'Text from answer: {response}...')
         await BOT.delete_message(
             message.chat.id,
