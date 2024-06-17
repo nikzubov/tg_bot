@@ -1,9 +1,9 @@
 import logging
 from typing import List
-import aiohttp
-from bs4 import BeautifulSoup
-from bot_instance import SCHEDULER
 
+import aiohttp
+from bot_instance import SCHEDULER
+from bs4 import BeautifulSoup
 
 anecdote_from_parce = []
 

@@ -1,16 +1,15 @@
-import os
-
-from dotenv import find_dotenv, load_dotenv
+from config import settings
+from database.models import Base
 from sqlalchemy.ext.asyncio import (AsyncSession, async_sessionmaker,
                                     create_async_engine)
 
-from database.models import Base
+engine = create_async_engine(settings.DB, echo=True)
 
-load_dotenv(find_dotenv('.env'))
-
-engine = create_async_engine(os.getenv('DB'), echo=True)
-
-session_maker = async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
+session_maker = async_sessionmaker(
+    bind=engine,
+    class_=AsyncSession,
+    expire_on_commit=False
+)
 
 
 async def create_db():

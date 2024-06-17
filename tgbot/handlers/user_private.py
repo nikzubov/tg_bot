@@ -7,16 +7,17 @@ from aiogram.enums import ParseMode
 from aiogram.filters import Command, CommandStart, StateFilter
 from aiogram.filters.logic import or_f
 from aiogram.fsm.context import FSMContext
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from bot_instance import BOT
 from database.orm import (orm_add_anek, orm_get_access, orm_get_anek,
                           orm_get_welcome, orm_set_rate)
+from database.redis_client import redis_client
+from extensions.parcer import get_anec_list
+from extensions.yandex import ya_client
 from filters.chat_types import ChatTypeFilter
-from extensions.yandex import get_response
 from kb.inline import get_inline_kb
 from kb.reply import get_kb
-from extensions.parcer import get_anec_list
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from .states import AddAnec, GetQuery
 
 user_private_router = Router()
@@ -94,10 +95,17 @@ async def gpt_query(message: types.Message, session: AsyncSession):
     )
     if user_access:
         response_message = await message.answer('Печатает...')
+        key = f'messages:{message.from_user.username}'
+        # Получение истории диалога с gpt
+        user_messages = await redis_client.messages_get(key)
         # Запрос к gpt
-        response = await get_response(message.text)
-        # Так как markdown gpt отличается, требуется замена '**' на '*
+        response = await ya_client.get_response(message.text, user_messages)
+        key = f'messages:{message.from_user.username}'
+        # Добавление последних сообщений в историю диалога с gpt
+        await redis_client.messages_post(key, message.text, response)
+        # Экранирование одиночных '*'
         response = re.sub(r'(?<!\*)\*(?!\*)', '\\*', response)
+        # Так как markdown gpt отличается, требуется замена '**' на '*
         response = re.sub(r'\*\*', '*', response)
         logging.info(f'Text from answer: {response}...')
         await BOT.delete_message(
@@ -119,7 +127,7 @@ async def gpt_query(message: types.Message, session: AsyncSession):
 ))
 async def menu(message: types.Message):
     await message.answer('Это меню👇', reply_markup=get_kb(
-        'Хочу анекдот😁', 'Добавить анекдот😃👍', 'Анекдоты подписчиков🤣', '↩️ Назад',
+        'Хочу анекдот😁', 'Добавить анекдот😃👍', 'Анекдоты пользователей🤣', '↩️ Назад',
         placeholder='Выберите один из вариантов:',
         sizes=(1, 1),
     ))

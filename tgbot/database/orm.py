@@ -1,5 +1,5 @@
 from random import choice
-from typing import List,Tuple
+from typing import List, Tuple
 
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
