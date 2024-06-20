@@ -115,7 +115,6 @@ async def gpt_query(
         # Добавление последних сообщений в историю диалога с gpt
         await redis_client.messages_post(key, message.text, response)
         # Экранирование одиночных '*'
-        response = re.sub(r'\_', '\\_', response)
         response = re.sub(r'(?<!\*)\*(?!\*)', '\\*', response)
         # Так как markdown gpt отличается, требуется замена '**' на '*
         response = re.sub(r'\*\*', '*', response)
