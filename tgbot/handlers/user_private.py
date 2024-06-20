@@ -7,6 +7,7 @@ from aiogram.enums import ParseMode
 from aiogram.filters import Command, CommandStart, StateFilter
 from aiogram.filters.logic import or_f
 from aiogram.fsm.context import FSMContext
+from aiogram.exceptions import TelegramBadRequest
 from bot_instance import BOT
 from database.orm import (orm_add_anek, orm_get_access, orm_get_anek,
                           orm_get_welcome, orm_set_rate)
@@ -36,9 +37,14 @@ async def start(message: types.Message):
     hello_msg = 'Выбери, чем хочешь заняться🐶'
     if message.text == '/start':
         hello_msg = (f'Привет, *{message.from_user.full_name}*!\n\n'
-                    'Меня зовут *Чопа*, я генератор шуток и мыслей. ') + hello_msg
+                     'Меня зовут *Чопа*, '
+                     'я генератор шуток и мыслей. ') + hello_msg
 
-    await message.answer(hello_msg, parse_mode=ParseMode.MARKDOWN, reply_markup=START_KB)
+    await message.answer(
+        hello_msg,
+        parse_mode=ParseMode.MARKDOWN,
+        reply_markup=START_KB
+    )
 
 
 @user_private_router.message(or_f(Command('gpt'), (F.text == 'gpt')))
@@ -68,9 +74,11 @@ async def gpt(
 
 @user_private_router.message(GetQuery.query, F.text == 'Информация')
 async def gpt_quit(message: types.Message):
-    text = ('🐶Для генерации текста используется языковая модель *YandexGPT*.\n\n'
-        '🐶Каждому пользователю предоставляется по *2* ознакомительных запроса\n\n'
-        '🐶По вопросам сотрудничества обращаться к @anakinnikita')
+    text = ('🐶Для генерации текста используется '
+            'языковая модель *YandexGPT*.\n\n'
+            '🐶Каждому пользователю предоставляется '
+            'по *2* ознакомительных запроса\n\n'
+            '🐶По вопросам сотрудничества обращаться к @anakinnikita')
 
     await message.answer(
         text,
@@ -86,7 +94,10 @@ async def gpt_quit(message: types.Message, state: FSMContext):
 
 
 @user_private_router.message(GetQuery.query, F.text)
-async def gpt_query(message: types.Message, session: AsyncSession):
+async def gpt_query(
+    message: types.Message,
+    session: AsyncSession
+):
     logging.info(f'Text from query: {message.text}')
     # Проверка, закончились ли у пользователя пробные запросы
     user_access = await orm_get_access(
@@ -104,6 +115,7 @@ async def gpt_query(message: types.Message, session: AsyncSession):
         # Добавление последних сообщений в историю диалога с gpt
         await redis_client.messages_post(key, message.text, response)
         # Экранирование одиночных '*'
+        response = re.sub(r'\_', '\\_', response)
         response = re.sub(r'(?<!\*)\*(?!\*)', '\\*', response)
         # Так как markdown gpt отличается, требуется замена '**' на '*
         response = re.sub(r'\*\*', '*', response)
@@ -112,13 +124,22 @@ async def gpt_query(message: types.Message, session: AsyncSession):
             message.chat.id,
             response_message.message_id
         )
-        await message.answer(
-            response,
-            parse_mode=ParseMode.MARKDOWN,
-            reply_markup=get_kb('Выйти из gpt', 'Информация')
-        )
+        try:
+            await message.answer(
+                response,
+                parse_mode=ParseMode.MARKDOWN,
+                reply_markup=get_kb('Выйти из gpt', 'Информация')
+            )
+        except TelegramBadRequest as e:
+            await message.answer(
+                (f'Произошла ошибка: *"{e}"*, '
+                 'пожалуйста обратитесь к @anakinnikita.'),
+                parse_mode=ParseMode.MARKDOWN
+            )
     else:
-        await message.answer('У вас закончились пробные запросы, свяжитесь с @anakinnikita.')
+        await message.answer(
+            'У вас закончились пробные запросы, свяжитесь с @anakinnikita.'
+        )
 
 
 @user_private_router.message(or_f(
@@ -140,7 +161,10 @@ async def anecdote(message: types.Message):
 
 
 @user_private_router.message(F.text == 'Анекдоты пользователей🤣')
-async def anecdote_from_users(message: types.Message, session: AsyncSession):
+async def anecdote_from_users(
+    message: types.Message,
+    session: AsyncSession
+):
     result = await orm_get_anek(session)
     if result:
         anecdote, rate = result
@@ -179,7 +203,11 @@ async def rate_anecdote(callback: types.CallbackQuery, session: AsyncSession):
     StateFilter(None),
     F.text == 'Добавить анекдот😃👍'
 )
-async def add_anek(message: types.Message, state: FSMContext, session: AsyncSession):
+async def add_anek(
+    message: types.Message,
+    state: FSMContext,
+    session: AsyncSession
+):
     # Функциия проверяет есть ли пользователь в базе и запускает FSM
     welcome_message = await orm_get_welcome(
         session=session,
@@ -197,13 +225,20 @@ async def add_anek(message: types.Message, state: FSMContext, session: AsyncSess
 
 @user_private_router.message(AddAnec.category, F.text)
 async def add_category(message: types.Message, state: FSMContext):
-    await state.update_data(username=message.from_user.username, category=message.text)
+    await state.update_data(
+        username=message.from_user.username,
+        category=message.text
+    )
     await message.answer("Введите текст")
     await state.set_state(AddAnec.text)
 
 
 @user_private_router.message(AddAnec.text, F.text)
-async def add_text(message: types.Message, state: FSMContext, session: AsyncSession):
+async def add_text(
+    message: types.Message,
+    state: FSMContext,
+    session: AsyncSession
+):
     await state.update_data(text=message.text)
     await message.answer("Успешно")
     data = await state.get_data()
