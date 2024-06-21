@@ -1,9 +1,15 @@
 from typing import List
 from config import settings
 from redis.asyncio import ConnectionPool, Redis
+from aiogram.fsm.storage.redis import RedisStorage, DefaultKeyBuilder
 
 
-class RedisClient:
+class RedisClientGPT:
+    """
+    Первая redis база
+    для хранения последних диалогов пользователей с нейросетью
+    """
+
     def __init__(
         self,
         url
@@ -31,6 +37,19 @@ class RedisClient:
             await self.client.aclose()
 
 
-redis_client = RedisClient(
-    f'redis://:{settings.R_PASSWORD}@localhost:6379?decode_responses=True&protocol=3'
+# url для первой базы
+REDIS_URL_0 = f'redis://:{settings.R_PASSWORD}@localhost:6379/0?decode_responses=True&protocol=3'
+# url для второй базы
+REDIS_URL_1 = f'redis://:{settings.R_PASSWORD}@localhost:6379/1?decode_responses=True&protocol=3'
+
+#Экземпляр первой базы для gpt
+redis_client_gpt = RedisClientGPT(REDIS_URL_0)
+
+# Экземпляр второй базы для сессий
+redis_fsm_storage = RedisStorage.from_url(
+    url=REDIS_URL_1,
+    key_builder=DefaultKeyBuilder(
+        with_bot_id=True,
+        with_destiny=True
+    )
 )

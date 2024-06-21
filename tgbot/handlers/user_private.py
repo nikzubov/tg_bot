@@ -3,7 +3,6 @@ import re
 from random import choice
 
 from aiogram import F, Router, types
-from aiogram.enums import ParseMode
 from aiogram.filters import Command, CommandStart, StateFilter
 from aiogram.filters.logic import or_f
 from aiogram.fsm.context import FSMContext
@@ -11,7 +10,7 @@ from aiogram.exceptions import TelegramBadRequest
 from bot_instance import BOT
 from database.orm import (orm_add_anek, orm_get_access, orm_get_anek,
                           orm_get_welcome, orm_set_rate)
-from database.redis_client import redis_client
+from database.redis_client import redis_client_gpt
 from extensions.parcer import get_anec_list
 from extensions.yandex import ya_client
 from filters.chat_types import ChatTypeFilter
@@ -42,7 +41,6 @@ async def start(message: types.Message):
 
     await message.answer(
         hello_msg,
-        parse_mode=ParseMode.MARKDOWN,
         reply_markup=START_KB
     )
 
@@ -64,7 +62,7 @@ async def gpt(
             'Ниже вы можете задать свой вопрос.')
     else:
         hello = f'Снова здравствуйте, *{message.from_user.username}*!'
-    await message.answer(hello, parse_mode=ParseMode.MARKDOWN)
+    await message.answer(hello)
     await message.answer(
         'Введите запрос',
         reply_markup=get_kb('Выйти из gpt', 'Информация')
@@ -82,13 +80,14 @@ async def gpt_quit(message: types.Message):
 
     await message.answer(
         text,
-        parse_mode=ParseMode.MARKDOWN,
         reply_markup=get_kb('Выйти из gpt', 'Информация')
     )
 
 
 @user_private_router.message(GetQuery.query, F.text == 'Выйти из gpt')
 async def gpt_quit(message: types.Message, state: FSMContext):
+    """Отчистка состояний FSM и возврат стартовой клавиатуры"""
+
     await state.clear()
     await message.answer('Вы вышли', reply_markup=START_KB)
 
@@ -98,6 +97,8 @@ async def gpt_query(
     message: types.Message,
     session: AsyncSession
 ):
+    """Обработка запроса к gpt"""
+
     logging.info(f'Text from query: {message.text}')
     # Проверка, закончились ли у пользователя пробные запросы
     user_access = await orm_get_access(
@@ -108,16 +109,16 @@ async def gpt_query(
         response_message = await message.answer('Печатает...')
         key = f'messages:{message.from_user.username}'
         # Получение истории диалога с gpt
-        user_messages = await redis_client.messages_get(key)
+        user_messages = await redis_client_gpt.messages_get(key)
         # Запрос к gpt
         response = await ya_client.get_response(message.text, user_messages)
         key = f'messages:{message.from_user.username}'
         # Добавление последних сообщений в историю диалога с gpt
-        await redis_client.messages_post(key, message.text, response)
+        await redis_client_gpt.messages_post(key, message.text, response)
         # Экранирование одиночных '*'
-        response = re.sub(r'(?<!\*)\*(?!\*)', '\\*', response)
+        response_re = re.sub(r'(?<!\*)\*(?!\*)', '\\*', response)
         # Так как markdown gpt отличается, требуется замена '**' на '*
-        response = re.sub(r'\*\*', '*', response)
+        response_re = re.sub(r'\*\*', '*', response_re)
         logging.info(f'Text from answer: {response}...')
         await BOT.delete_message(
             message.chat.id,
@@ -125,15 +126,15 @@ async def gpt_query(
         )
         try:
             await message.answer(
-                response,
-                parse_mode=ParseMode.MARKDOWN,
+                response_re,
                 reply_markup=get_kb('Выйти из gpt', 'Информация')
             )
-        except TelegramBadRequest as e:
+        except TelegramBadRequest:
+            logging.error('Mardown сброшен, плохой запрос к telegram.')
             await message.answer(
-                (f'Произошла ошибка: *"{e}"*, '
-                 'пожалуйста обратитесь к @anakinnikita.'),
-                parse_mode=ParseMode.MARKDOWN
+                response,
+                reply_markup=get_kb('Выйти из gpt', 'Информация'),
+                parse_mode=None
             )
     else:
         await message.answer(
@@ -146,6 +147,8 @@ async def gpt_query(
     (F.text.lower() == 'joke_bot')
 ))
 async def menu(message: types.Message):
+    """Главное меню бота"""
+
     await message.answer('Это меню👇', reply_markup=get_kb(
         'Хочу анекдот😁', 'Добавить анекдот😃👍', 'Анекдоты пользователей🤣', '↩️ Назад',
         placeholder='Выберите один из вариантов:',
@@ -178,7 +181,6 @@ async def anecdote_from_users(
         )
         await message.answer(
             text,
-            parse_mode=ParseMode.MARKDOWN,
             reply_markup=get_inline_kb(
                 {'👍': f'rate_1_{anecdote.id}_{message.from_user.username}',
                 '👎': f'rate_-1_{anecdote.id}_{message.from_user.username}'},
@@ -217,7 +219,7 @@ async def add_anek(
             'Ниже вы можете создать любой анекдот\.')
     else:
         hello = f'Снова здравствуйте, *{message.from_user.username}*\!'
-    await message.answer(hello, parse_mode=ParseMode.MARKDOWN_V2)
+    await message.answer(hello)
     await message.answer("Введите категорию")
     await state.set_state(AddAnec.category)
 
