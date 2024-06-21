@@ -15,7 +15,7 @@ from extensions.parcer import get_anec_list
 from extensions.yandex import ya_client
 from filters.chat_types import ChatTypeFilter
 from kb.inline import get_inline_kb
-from kb.reply import GPT_KB, JOKE_KB, START_KB
+from kb.reply import GPT_KB, JOKE_KB, START_KB, JOKE_MENU_KB
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .states import AddAnec, GetQuery
@@ -123,13 +123,13 @@ async def gpt_query(
         try:
             await message.answer(
                 response_re,
-                reply_markup=get_kb('Выйти из gpt', 'Информация')
+                reply_markup=GPT_KB
             )
         except TelegramBadRequest:
             logging.error('Mardown сброшен, плохой запрос к telegram.')
             await message.answer(
                 response,
-                reply_markup=get_kb('Выйти из gpt', 'Информация'),
+                reply_markup=GPT_KB,
                 parse_mode=None
             )
     else:
@@ -148,7 +148,7 @@ async def menu(message: types.Message, state: FSMContext = None):
 
     if state:
         await state.clear()
-    await message.answer('Это меню👇', reply_markup=JOKE_KB)
+    await message.answer('Это меню👇', reply_markup=JOKE_MENU_KB)
 
 
 @user_private_router.message(F.text == 'Хочу анекдот😁')
@@ -216,7 +216,7 @@ async def add_anek(
     await message.answer(hello)
     await message.answer(
         "Введите категорию",
-        reply_markup=get_kb('Выйти без сохранения')
+        reply_markup=JOKE_KB
     )
     await state.set_state(AddAnec.category)
 
