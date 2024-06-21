@@ -3,10 +3,10 @@ import re
 from random import choice
 
 from aiogram import F, Router, types
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import Command, CommandStart, StateFilter
 from aiogram.filters.logic import or_f
 from aiogram.fsm.context import FSMContext
-from aiogram.exceptions import TelegramBadRequest
 from bot_instance import BOT
 from database.orm import (orm_add_anek, orm_get_access, orm_get_anek,
                           orm_get_welcome, orm_set_rate)
@@ -15,7 +15,7 @@ from extensions.parcer import get_anec_list
 from extensions.yandex import ya_client
 from filters.chat_types import ChatTypeFilter
 from kb.inline import get_inline_kb
-from kb.reply import get_kb
+from kb.reply import GPT_KB, JOKE_KB, START_KB
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .states import AddAnec, GetQuery
@@ -24,11 +24,15 @@ user_private_router = Router()
 user_private_router.message.filter(ChatTypeFilter(('private')))
 
 
-START_KB = get_kb(
-        'gpt',
-        'joke_bot',
-        placeholder='Что вас интересует?'
-    )
+@user_private_router.message(
+    or_f(GetQuery.query, AddAnec.category, AddAnec.text),
+    or_f(F.text == 'Выйти из gpt', CommandStart())
+)
+async def gpt_quit(message: types.Message, state: FSMContext):
+    """Отчистка состояний FSM и возврат стартовой клавиатуры"""
+
+    await state.clear()
+    await message.answer('Вы вышли', reply_markup=START_KB)
 
 
 @user_private_router.message(or_f(CommandStart(), (F.text == '↩️ Назад')))
@@ -41,7 +45,7 @@ async def start(message: types.Message):
 
     await message.answer(
         hello_msg,
-        reply_markup=START_KB
+        reply_markup=START_KB,
     )
 
 
@@ -58,20 +62,20 @@ async def gpt(
     )
     if welcome_message:
         hello = (f'Добро пожаловать *{message.from_user.first_name}*!👋\n'
-            'Меня зовут *Чопа*🐶, я умный пёс.\n'
-            'Ниже вы можете задать свой вопрос.')
+                 'Меня зовут *Чопа*🐶, я умный пёс.\n'
+                 'Ниже вы можете задать свой вопрос.')
     else:
         hello = f'Снова здравствуйте, *{message.from_user.username}*!'
     await message.answer(hello)
     await message.answer(
         'Введите запрос',
-        reply_markup=get_kb('Выйти из gpt', 'Информация')
+        reply_markup=GPT_KB
     )
     await state.set_state(GetQuery.query)
 
 
 @user_private_router.message(GetQuery.query, F.text == 'Информация')
-async def gpt_quit(message: types.Message):
+async def gpt_info(message: types.Message):
     text = ('🐶Для генерации текста используется '
             'языковая модель *YandexGPT*.\n\n'
             '🐶Каждому пользователю предоставляется '
@@ -80,16 +84,8 @@ async def gpt_quit(message: types.Message):
 
     await message.answer(
         text,
-        reply_markup=get_kb('Выйти из gpt', 'Информация')
+        reply_markup=GPT_KB
     )
-
-
-@user_private_router.message(GetQuery.query, F.text == 'Выйти из gpt')
-async def gpt_quit(message: types.Message, state: FSMContext):
-    """Отчистка состояний FSM и возврат стартовой клавиатуры"""
-
-    await state.clear()
-    await message.answer('Вы вышли', reply_markup=START_KB)
 
 
 @user_private_router.message(GetQuery.query, F.text)
@@ -144,16 +140,15 @@ async def gpt_query(
 
 @user_private_router.message(or_f(
     Command('joke_bot'),
-    (F.text.lower() == 'joke_bot')
+    (F.text.lower() == 'joke_bot'),
+    (F.text.lower() == 'выйти без сохранения')
 ))
-async def menu(message: types.Message):
-    """Главное меню бота"""
+async def menu(message: types.Message, state: FSMContext = None):
+    """Меню шуток бота"""
 
-    await message.answer('Это меню👇', reply_markup=get_kb(
-        'Хочу анекдот😁', 'Добавить анекдот😃👍', 'Анекдоты пользователей🤣', '↩️ Назад',
-        placeholder='Выберите один из вариантов:',
-        sizes=(1, 1),
-    ))
+    if state:
+        await state.clear()
+    await message.answer('Это меню👇', reply_markup=JOKE_KB)
 
 
 @user_private_router.message(F.text == 'Хочу анекдот😁')
@@ -171,14 +166,13 @@ async def anecdote_from_users(
     if result:
         anecdote, rate = result
         text = ('🐶Рейтинг:\n'
-            f'{str(rate)}\n\n'
-            '🐶Автор:\n'
-            f'@{str(anecdote.users.username)}\n\n'
-            '🐶 Категория\n'
-            f'{anecdote.category.name}\n\n'
-            '🐶Текст:\n'
-            f'{anecdote.text}'
-        )
+                f'{str(rate)}\n\n'
+                '🐶Автор:\n'
+                f'@{str(anecdote.users.username)}\n\n'
+                '🐶 Категория\n'
+                f'{anecdote.category.name}\n\n'
+                '🐶Текст:\n'
+                f'{anecdote.text}')
         await message.answer(
             text,
             reply_markup=get_inline_kb(
@@ -215,12 +209,15 @@ async def add_anek(
         username=message.from_user.username
     )
     if welcome_message:
-        hello = (f'Добро пожаловать *{message.from_user.first_name}*\!👋\n'
-            'Ниже вы можете создать любой анекдот\.')
+        hello = (f'Добро пожаловать *{message.from_user.first_name}*!👋\n'
+                 'Ниже вы можете создать любой анекдот.')
     else:
-        hello = f'Снова здравствуйте, *{message.from_user.username}*\!'
+        hello = f'Снова здравствуйте, *{message.from_user.username}*!'
     await message.answer(hello)
-    await message.answer("Введите категорию")
+    await message.answer(
+        "Введите категорию",
+        reply_markup=get_kb('Выйти без сохранения')
+    )
     await state.set_state(AddAnec.category)
 
 
@@ -241,7 +238,7 @@ async def add_text(
     session: AsyncSession
 ):
     await state.update_data(text=message.text)
-    await message.answer("Успешно")
+    await message.answer("Успешно", reply_markup=JOKE_KB)
     data = await state.get_data()
     await orm_add_anek(session=session, data=data)
     await state.clear()

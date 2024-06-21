@@ -1,7 +1,8 @@
 from typing import List
+
+from aiogram.fsm.storage.redis import DefaultKeyBuilder, RedisStorage
 from config import settings
 from redis.asyncio import ConnectionPool, Redis
-from aiogram.fsm.storage.redis import RedisStorage, DefaultKeyBuilder
 
 
 class RedisClientGPT:
@@ -42,7 +43,7 @@ REDIS_URL_0 = f'redis://:{settings.R_PASSWORD}@localhost:6379/0?decode_responses
 # url для второй базы
 REDIS_URL_1 = f'redis://:{settings.R_PASSWORD}@localhost:6379/1?decode_responses=True&protocol=3'
 
-#Экземпляр первой базы для gpt
+# Экземпляр первой базы для gpt
 redis_client_gpt = RedisClientGPT(REDIS_URL_0)
 
 # Экземпляр второй базы для сессий
