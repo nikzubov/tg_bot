@@ -39,9 +39,9 @@ class RedisClientGPT:
 
 
 # url для первой базы
-REDIS_URL_0 = f'redis://:{settings.R_PASSWORD}@localhost:6379/0?decode_responses=True&protocol=3'
+REDIS_URL_0 = f'redis://:{settings.R_PASSWORD}@redis:6379/0?decode_responses=True&protocol=3'
 # url для второй базы
-REDIS_URL_1 = f'redis://:{settings.R_PASSWORD}@localhost:6379/1?decode_responses=True&protocol=3'
+REDIS_URL_1 = f'redis://:{settings.R_PASSWORD}@redis:6379/1?decode_responses=True&protocol=3'
 
 # Экземпляр первой базы для gpt
 redis_client_gpt = RedisClientGPT(REDIS_URL_0)

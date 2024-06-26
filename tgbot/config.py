@@ -4,7 +4,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 # Класс для доступа к переменным окружения
 class Settings(BaseSettings):
     TOKEN: str
-    DB: str
+    POSTGRES_USER: str
+    POSTGRES_DB: str
+    POSTGRES_PASSWORD: str
     CATALOGUE_ID: str
     KEY: str
     R_PASSWORD: str

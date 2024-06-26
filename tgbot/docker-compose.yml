@@ -1,0 +1,44 @@
+version: '3.9'
+
+services:
+  bot:
+    restart: always
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/bot
+    depends_on:
+      - db
+      - redis
+    environment:
+      - DB_HOST=${DB}
+    ports:
+     - "222:222"
+
+  db:
+    image: postgres
+    restart: always
+    shm_size: 128mb
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis
+    volumes:
+      - redis_data:/data
+    command: redis-server --requirepass ${R_PASSWORD}
+    environment:
+      R_PASSWORD: ${R_PASSWORD}
+    ports:
+      - "6379:6379"
+
+volumes:
+  postgres_data:
+  redis_data:
