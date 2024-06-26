@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     KEY: str
     R_PASSWORD: str
 
-    model_config = SettingsConfigDict(env_file='.env')
+    model_config = SettingsConfigDict(env_file='/app/.env')
 
 
 settings = Settings()

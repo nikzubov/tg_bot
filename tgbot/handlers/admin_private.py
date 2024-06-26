@@ -35,6 +35,7 @@ async def watch_anecdote(message: types.Message, session: AsyncSession):
         )
     )
 
+
 @admin_router.callback_query(F.data == 'quit')
 async def quit(callback: types.CallbackQuery):
     await callback.message.answer("Что хотите сделать?", reply_markup=ADMIN_KB)
