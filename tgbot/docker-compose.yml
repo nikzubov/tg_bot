@@ -11,8 +11,6 @@ services:
     depends_on:
       - db
       - redis
-    environment:
-      - DB_HOST=${DB}
     ports:
      - "222:222"
 
