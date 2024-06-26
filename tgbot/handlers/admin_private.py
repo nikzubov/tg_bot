@@ -1,7 +1,6 @@
 from aiogram import F, Router, types
-from aiogram.filters import Command, StateFilter
+from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
-from aiogram.utils.formatting import Bold, Text, as_list
 from database.orm import orm_del_anecdote, orm_get_all_anecdote
 from filters.chat_types import ChatTypeFilter, IsAdmin
 from kb.inline import get_inline_kb
@@ -25,18 +24,19 @@ ADMIN_KB = get_kb(
 @admin_router.message(F.text == 'Посмотреть все анекдоты')
 async def watch_anecdote(message: types.Message, session: AsyncSession):
     anecdote_list = await orm_get_all_anecdote(session=session, offset=0)
+    text = ''
     for row in anecdote_list:
-        text = as_list(
-            Bold(f'id: {str(row.id)}'),
-            Bold('Текст:'),
-            Text(row.text)
+        text += (f'*id:* {str(row.id)}\n\n'
+                 f'*Текст:*\n\n'
+                 f'{row.text}\n\n')
+    await message.answer(text, reply_markup=get_inline_kb(
+            {'след.': 'next_0', 'Выход': 'quit'},
+            sizes=(1,)
         )
-        await message.answer(text.as_html())
-    await message.answer('Выберите', reply_markup=get_inline_kb({'след.': 'next_0', 'Выход': 'quit'}, sizes=(1,)))
-
+    )
 
 @admin_router.callback_query(F.data == 'quit')
-async def next_page(callback: types.CallbackQuery, session: AsyncSession):
+async def quit(callback: types.CallbackQuery):
     await callback.message.answer("Что хотите сделать?", reply_markup=ADMIN_KB)
 
 
@@ -45,14 +45,18 @@ async def next_page(callback: types.CallbackQuery, session: AsyncSession):
     _, last_offset = callback.data.split('_')
     offset = int(last_offset) + 5
     row_list = await orm_get_all_anecdote(session=session, offset=offset)
+    text = ''
     for row in row_list:
-        text = as_list(
-            Bold(f'id: {str(row.id)}'),
-            Bold('Текст:'),
-            Text(row.text)
+        text += (f'*id:* {str(row.id)}\n\n'
+                 f'*Текст:*\n\n'
+                 f'{row.text}\n\n')
+        await callback.message.answer(
+            text,
+            reply_markup=get_inline_kb(
+                {'след.': f'next_{offset}', 'Выход': 'quit'},
+                sizes=(2,)
+            )
         )
-        await callback.message.answer(text.as_html())
-    await callback.message.answer('Выберете', reply_markup=get_inline_kb({'след.': f'next_{offset}', 'Выход': 'quit'}, sizes=(2,)))
 
 
 @admin_router.message(F.text == 'Удалить анекдот')
@@ -62,7 +66,11 @@ async def delete_anecdote(message: types.Message, state: FSMContext):
 
 
 @admin_router.message(DeleteAnec.id, F.text)
-async def set_id(message: types.Message, state: FSMContext, session: AsyncSession):
+async def set_id(
+    message: types.Message,
+    state: FSMContext,
+    session: AsyncSession
+):
     await state.update_data(id=message.text)
     data = await state.get_data()
     result = await orm_del_anecdote(session, int(data['id']))
@@ -76,15 +84,3 @@ async def set_id(message: types.Message, state: FSMContext, session: AsyncSessio
 @admin_router.message(Command('admin'))
 async def admin_features(message: types.Message):
     await message.answer("Что хотите сделать?", reply_markup=ADMIN_KB)
-
-
-@admin_router.message(StateFilter('*'), Command("отмена"))
-@admin_router.message(StateFilter('*'), F.text.casefold() == "отмена")
-async def cancel_handler(message: types.Message, state: FSMContext) -> None:
-
-    current_state = await state.get_state()
-    if current_state is None:
-        return
-
-    await state.clear()
-    await message.answer("Действия отменены", reply_markup=ADMIN_KB)
