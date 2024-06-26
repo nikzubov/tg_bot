@@ -238,7 +238,7 @@ async def add_text(
     session: AsyncSession
 ):
     await state.update_data(text=message.text)
-    await message.answer("Успешно", reply_markup=JOKE_KB)
+    await message.answer("Успешно", reply_markup=JOKE_MENU_KB)
     data = await state.get_data()
     await orm_add_anek(session=session, data=data)
     await state.clear()
