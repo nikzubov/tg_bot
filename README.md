@@ -1,7 +1,7 @@
 # Телеграм бот с YandexGPT. 
 Asyncio telegram bot with aiogram, redis, postgres  
 Асинхронный телеграм бот на библиотеке aiogram с redis и postgres.  
-Контейнеры с __postgresql__ и __redis__, к которым подключается данный бот, описаны в другом *docker-compose*.yml__ https://github.com/nikzubov/test-mission/blob/main/docker-compose.yml.
+Контейнеры с __postgresql__ и __redis__, к которым подключается данный бот, описаны в другом *docker-compose.yml* https://github.com/nikzubov/test-mission/blob/main/docker-compose.yml.
 
 ## Краткое описание
 Данный бот использует две базы *redis*, одну для хранения сессий пользователя, вторую для хранения последних диалогов пользователя с *gpt*. Подключение осуществляется при помощи библиотеки __redis-py__ c использованием асинхронного модуля asyncio. В качестве основной базы данных используется posgresql c *asyncpg*, используемая orm - __sqlalchemy__.
