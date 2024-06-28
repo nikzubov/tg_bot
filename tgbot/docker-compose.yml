@@ -8,9 +8,6 @@ services:
       dockerfile: Dockerfile
     volumes:
       - .:/bot
-    depends_on:
-      - db
-      - redis
     networks:
       - test-mission_default
     ports:
