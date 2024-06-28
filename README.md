@@ -1,20 +1,20 @@
 # Телеграм бот с YandexGPT. 
 Asyncio telegram bot with aiogram, redis, postgres  
 Асинхронный телеграм бот на библиотеке aiogram с redis и postgres.  
-Контейнеры с *postgresql* и *redis*, к которым подключается данный бот, описаны в другом __docker-compose.yml__ https://github.com/nikzubov/test-mission/blob/main/docker-compose.yml.
+Контейнеры с __postgresql__ и __redis__, к которым подключается данный бот, описаны в другом *docker-compose*.yml__ https://github.com/nikzubov/test-mission/blob/main/docker-compose.yml.
 
 ## Краткое описание
-Данный бот использует две базы __redis__, одну для хранения сессий пользователя, вторую для хранения последних диалогов пользователя с __gpt__. Подключение осуществляется при помощи библиотеки *redis-py* c использованием асинхронного модуля asyncio. В качестве основной базы данных используется posgresql c __asyncpg__, используемая orm - *sqlalchemy*.
+Данный бот использует две базы *redis*, одну для хранения сессий пользователя, вторую для хранения последних диалогов пользователя с *gpt*. Подключение осуществляется при помощи библиотеки __redis-py__ c использованием асинхронного модуля asyncio. В качестве основной базы данных используется posgresql c *asyncpg*, используемая orm - __sqlalchemy__.
 
 ## Запуск
-Требуется создать файл `.env` с в директории tgbot, указав в нем следующие настройки:  
-* TOKEN=<токен от botfather>
-* POSTGRES_USER=<пользователь postgres>
-* POSTGRES_DB=<имя базы postgres>
-* POSTGRES_PASSWORD=<пароль пользователя postgres>
-* CATALOGUE_ID=<id каталога yandexcloud>
-* KEY=<ключ yandexcloud>
-* R_PASSWORD=<пароль для redis>
+Требуется создать файл `.env` с в директории __tgbot__, указав в нем следующие настройки:  
+* __TOKEN__=<токен от botfather>
+* __POSTGRES_USER__=<пользователь postgres>
+* __POSTGRES_DB__=<имя базы postgres>
+* __POSTGRES_PASSWORD__=<пароль пользователя postgres>
+* __CATALOGUE_ID__=<id каталога yandexcloud>
+* __KEY__=<ключ yandexcloud>
+* __R_PASSWORD__=<пароль для redis>
 
 После всего вышеперечисленного требуется выполнить команду `docker-compose up --build -d`  
 Бот будет запущен.
