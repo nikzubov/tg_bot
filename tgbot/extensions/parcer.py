@@ -9,6 +9,7 @@ anecdote_from_parce = []
 
 url = 'https://anekdoty.ru/'
 
+
 async def build_anec_list() -> None:
     '''Функция для обновления списка анекдотов anecdote_from_parce'''
     global anecdote_from_parce
