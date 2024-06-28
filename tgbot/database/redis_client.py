@@ -39,16 +39,16 @@ class RedisClientGPT:
 
 
 # url для первой базы
-REDIS_URL_0 = f'redis://:{settings.R_PASSWORD}@redis:6379/0?decode_responses=True&protocol=3'
-# url для второй базы
 REDIS_URL_1 = f'redis://:{settings.R_PASSWORD}@redis:6379/1?decode_responses=True&protocol=3'
+# url для второй базы
+REDIS_URL_2 = f'redis://:{settings.R_PASSWORD}@redis:6379/2?decode_responses=True&protocol=3'
 
 # Экземпляр первой базы для gpt
-redis_client_gpt = RedisClientGPT(REDIS_URL_0)
+redis_client_gpt = RedisClientGPT(REDIS_URL_1)
 
 # Экземпляр второй базы для сессий
 redis_fsm_storage = RedisStorage.from_url(
-    url=REDIS_URL_1,
+    url=REDIS_URL_2,
     key_builder=DefaultKeyBuilder(
         with_bot_id=True,
         with_destiny=True
